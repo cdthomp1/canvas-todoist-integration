@@ -1,0 +1,24 @@
+{
+  "name": "canvas-todoist-integration",
+  "version": "1.0.0",
+  "description": "A way to organize Canvas assignments in Todoist with ease.",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cdthomp1/canvas-todoist-integration.git"
+  },
+  "keywords": [],
+  "author": "Cameron Thompson",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/cdthomp1/canvas-todoist-integration/issues"
+  },
+  "homepage": "https://github.com/cdthomp1/canvas-todoist-integration#readme",
+  "dependencies": {
+    "dotenv": "^8.2.0",
+    "node-fetch": "^2.6.1"
+  }
+}
