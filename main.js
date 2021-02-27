@@ -1,8 +1,6 @@
 require('dotenv').config()
 const fetch = require('node-fetch');
 
-
-
 var headers = {
     'Authorization': 'Bearer ' + process.env.CANVAS_API_TOKEN
 }
@@ -10,15 +8,15 @@ var headers = {
 async function getCurrentCourses() {
     var courses = await fetch("https://byui.instructure.com/api/v1/dashboard/dashboard_cards", { headers })
         .then(res => { return res.json() })
-
     return courses
 }
 
 async function createProject(course) {
+    var headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.TODOIST_API_TOKEN}` }
     var project = await fetch('https://api.todoist.com/rest/v1/projects', {
         method: 'post',
         body: JSON.stringify(course),
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.TODOIST_API_TOKEN}` },
+        headers: { headers },
     })
         .then(res => { return res.json() })
 
@@ -59,20 +57,25 @@ async function fetchRequest(url) {
 }
 
 async function createProjectTask(projectId, task) {
+
     var refinedTask = {
-        project_id: projectId,
+        project_id: projectId.id,
         content: task.content,
         due_datetime: task.due_datetime
     }
     console.log(refinedTask)
-    /* await fetch('https://api.todoist.com/rest/v1/tasks', {
+    sleep(4000);
+    await fetch('https://api.todoist.com/rest/v1/tasks', {
         method: 'post',
         body: JSON.stringify(refinedTask),
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.TODOIST_API_TOKEN}` },
     })
+        .then(res => console.log(res))
         .then(res => res.json())
-        .then(json => console.log(json))
-        .catch(error => console.error(error)); */
+        .catch(error => {
+            console.error(error);
+            console.log(refinedTask)
+        });
 }
 
 function assignmentToTask(assignment) {
@@ -83,14 +86,40 @@ function assignmentToTask(assignment) {
 }
 
 async function orchestrator() {
+    // Get today to filter past assignments
     var courses = await getCurrentCourses();
-    console.log(courses)
-    var projects = await courses.map(courseToProject).map(createProject)
-    console.log(projects)
-    // Create Tasks 
-    //var assignments = await courseAssignments(courses[5])
-    //assignments.map(assignmentToTask).map(task => createProjectTask(projects[0], task))
+    var courseProjects = courses.map(courseToProject)
 
+    var promiseProjects = await courseProjects.map(createProject)
+    var projects = await Promise.all(promiseProjects).then(projects => { return projects });
+
+    courses.forEach(async (course) => {
+        var assignments = await courseAssignments(course);
+        var project = projects.filter(project => project.name === course.courseCode)
+        var assignmentTasks = assignments
+            // Some assignments don't have due dates 
+            .filter(assignment => assignment.due_at !== null)
+            // If I run this during the semester, I don't need tasks that already past 
+            .filter(assignment => {
+                let today = new Date();
+                var assignmentDueDate = new Date(assignment.due_at);
+                return assignmentDueDate > today
+            })
+            .map(assignmentToTask)
+
+        assignmentTasks.map(task => createProjectTask(project[0], task))
+    })
 }
 
 orchestrator();
+
+
+function sleep(milliseconds) {
+    console.log('Sleeping....')
+    const date = Date.now();
+    let currentDate = null;
+    do {
+        currentDate = Date.now();
+    } while (currentDate - date < milliseconds);
+    console.log("Awake!")
+}
